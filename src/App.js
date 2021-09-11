@@ -11,6 +11,7 @@ import { Toolbar } from "@material-ui/core/";
 import { Typography } from "@material-ui/core/";
 import { mergeClasses } from "@material-ui/styles";
 import { typography } from "@material-ui/system";
+import Receipts from "./Receipts";
 
 const classes = makeStyles(theme => ({
   root: {
@@ -62,6 +63,7 @@ const App = () => {
 
         <Route path="/" exact component={Home} />
         <Route path="/new" component={NewFundraiser} />
+        <Route path="/receipts" component={Receipts} />
       </div>
     </Router>
   );

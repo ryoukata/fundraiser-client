@@ -78,6 +78,7 @@ const FundraiserCard = (props) => {
   const [open, setOpen] = useState(false);
   const [donationAmount, setDonationAmount] = useState(null);
   const [exchangeRate, setExchangeRate] = useState(null);
+  const [userDonations, setUserDonations] = useState(null);
   const ethAmount = donationAmount / exchangeRate || 0;
 
   const {fundraiser} = props;
@@ -120,6 +121,9 @@ const FundraiserCard = (props) => {
       setImageURL(imageURL);
       setTotalDonations(dollerDonationAmount);
       setURL(url);
+      const userDonations = await instance.methods.myDonations().call({from: accounts[0]});
+      console.log(userDonations);
+      setUserDonations(userDonations);
     } catch(error) {
       alert(
         `Failed to load web3, accounts, or contract. Check console for details.`,
@@ -150,6 +154,39 @@ const FundraiserCard = (props) => {
     sendOpen(false);
   }
 
+  const renderDonationsList = () => {
+    var donations = userDonations;
+    if (donations === null) { return null };
+
+    const totalDonations = donations.values.length;
+    let donationList = [];
+    for (i = 0; i < totalDonations; i++) {
+      const ethAmount = web3.utils.fromWei(donations.values[i]);
+      const userDonation = exchangeRate * ethAmount;
+      const donationDate = donations.dates[i];
+      donationList.push({donationAmount: userDonation.toFixed(2),
+                         date: donationDate});
+    }
+
+    return donationList.map((donation) => {
+      return (
+        <div className="donation-list">
+          <p>${donation.donationAmount}</p>
+          <Button variant="contained" color="primary">
+            <Link className="donation-receipt-link" 
+                  to={{pathname: 'receipts',
+                       state: {fund: fundName,
+                               donation: donation.donationAmount,
+                               date: donation.date}
+                  }}>
+              Request Receipt
+            </Link>
+          </Button>
+        </div>
+      )
+    })
+  }
+
   return (
     <div className="fundraiser-card-content">
       <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
@@ -172,6 +209,10 @@ const FundraiserCard = (props) => {
         <Button onClick={submitFunds} variant="contained" color="primary">
           Donate
         </Button>
+        <div>
+          <h3>My donations</h3>
+          {renderDonationsList()}
+        </div>
         <DialogActions>
           <Button onClick={handleClose} color="primary">
             Cancel
