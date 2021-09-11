@@ -20,25 +20,29 @@ import Input from '@material-ui/core/Input';
 import InputLabel from '@material-ui/core/InputLabel';
 import OutlinedInput from '@material-ui/core/OutlinedInput';
 
-import getWeb3 from "./utils/getWeb3";
+import getWeb3 from "./getWeb3";
 import FundraiserContract from "./contracts/Fundraiser.json";
-import Web3 from 'web3'
-
+import Web3 from 'web3';
+import detectEthereumProvider from '@metamask/detect-provider';
+import FundraiserFactoryContract from "./contracts/FundraiserFactory.json";
 import { Link } from 'react-router-dom'
 
-const cc = require('cryptocompare')
-
-const getModalStyle =() => {
-  const top = 50;
-  const left = 50;
-
-  return {
-    top,
-    left,
-  };
-}
+const cc = require('cryptocompare');
 
 const useStyles = makeStyles(theme => ({
+  card: {
+    maxWidth: 450,
+    height: 400
+  },
+  media: {
+    height: 140,
+  },
+  button: {
+    margin: theme.spacing(1),
+  },
+  input: {
+    display: 'none',
+  },
   container: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -47,16 +51,9 @@ const useStyles = makeStyles(theme => ({
     margin: theme.spacing(1),
     display: 'table-cell'
   },
-  card: {
-    maxWidth: 450,
-    height: 400
-  },
-  media: {
-    height: 140,
-  },
   paper: {
     position: 'absolute',
-    width: 500,
+    width: 400,
     backgroundColor: theme.palette.background.paper,
     border: 'none',
     boxShadow: 'none',
@@ -64,78 +61,66 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+
+
 const FundraiserCard = (props) => {
-  const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
-
-  const [ contract, setContract] = useState(null)
-  const [ accounts, setAccounts ] = useState(null)
-  const [ fund, setFundraiser ] = useState(null)
-  const [ fundName, setFundname ] = useState(null)
-  const [ description, setDescription ] = useState(null)
-  const [ totalDonations, setTotalDonations ] = useState(null)
-  const [ imageURL, setImageURL ] = useState(null)
-  const [ url, setURL ] = useState(null)
-  const [ open, setOpen] = React.useState(false);
-  const [ donationAmount, setDonationAmount] = useState(null)
-  const [ exchangeRate, setExchangeRate ] = useState(null)
-  const [ userDonations, setUserDonations ] = useState(null)
-  const [ isOwner, setIsOwner ] = useState(false)
-  const [ beneficiary, setNewBeneficiary ] = useState('')
-
-  const ethAmount = (donationAmount / exchangeRate || 0).toFixed(4)
-
-  const { fundraiser } = props
-
   const classes = useStyles();
+
+  const [web3, setWeb3] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [accounts, setAccounts] = useState(null);
+  const [fundName, setFundname] = useState(null);
+  const [description, setDescription] = useState(null);
+  const [totalDonations, setTotalDonations] = useState(null);
+  const [donationCount, setDonationCount] = useState(null);
+  const [imageURL, setImageURL] = useState(null);
+  const [url, setURL] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [donationAmount, setDonationAmount] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const ethAmount = donationAmount / exchangeRate || 0;
+
+  const {fundraiser} = props;
 
   useEffect(() => {
     if (fundraiser) {
-      init(fundraiser)
+      init(fundraiser);
     }
   }, [fundraiser]);
 
   const init = async (fundraiser) => {
     try {
-      const fund = fundraiser
+      const fund = fundraiser;
+      const provider = await detectEthereumProvider();
+      const web3 = new Web3(provider);
       const networkId = await web3.eth.net.getId();
-      const deployedNetwork = FundraiserContract.networks[networkId];
+      const deployedNetwork = FundraiserFactoryContract.networks[networkId];
       const accounts = await web3.eth.getAccounts();
       const instance = new web3.eth.Contract(
-        FundraiserContract.abi,
+        FundraiserFactoryContract.abi,
         fund
       );
-      setContract(instance)
-      setAccounts(accounts)
+      setWeb3(web3);
+      setContract(instance);
+      setAccounts(accounts);
 
-      const name = await instance.methods.name().call()
-      const description = await instance.methods.description().call()
-      const totalDonations = await instance.methods.totalDonations().call()
-      const imageURL = await instance.methods.imageURL().call()
-      const url = await instance.methods.url().call()
+      const name = await instance.methods.name().call();
+      const description = await instance.methods.description().call();
+      const totalDonations = await instance.methods.totalDonations().call();
+      const imageURL = await instance.methods.imageURL().call();
+      const url = await instance.methods.url().call();
 
-      const exchangeRate = await cc.price('ETH', ['USD'])
-      setExchangeRate(exchangeRate.USD)
-      const eth = web3.utils.fromWei(totalDonations, 'ether')
-      const dollarDonationAmount = exchangeRate.USD * eth
-
-      setTotalDonations(dollarDonationAmount.toFixed(2))
-      setFundname(name)
-      setDescription(description)
-      setImageURL(imageURL)
-      setURL(url)
-
-      const userDonations = await instance.methods.myDonations().call({ from: accounts[0]})
-      console.log(userDonations)
-      setUserDonations(userDonations)
-
-      const isUser = accounts[0]
-      const isOwner = await instance.methods.owner().call()
-
-      if (isOwner === accounts[0]) {
-        setIsOwner(true)
-      }
-    }
-    catch(error) {
+      // here change rate
+      const exchangeRate = await cc.price('ETH', ['USD']);
+      setExchangeRate(exchangeRate.USD);
+      const eth = web3.utils.fromWei(totalDonations, 'ether');
+      const dollerDonationAmount = exchangeRate.USD * eth;
+      setFundname(name);
+      setDescription(description);
+      setImageURL(imageURL);
+      setTotalDonations(dollerDonationAmount);
+      setURL(url);
+    } catch(error) {
       alert(
         `Failed to load web3, accounts, or contract. Check console for details.`,
       );
@@ -143,174 +128,81 @@ const FundraiserCard = (props) => {
     }
   }
 
-  window.ethereum.on('accountsChanged', function (accounts) {
-    window.location.reload()
-  })
-
   const handleOpen = () => {
+    // open dialog setting true for React State.
     setOpen(true);
-  };
+  }
 
   const handleClose = () => {
+    // close dialog when click button for Cancel or out of dialog.
     setOpen(false);
-  };
+  }
 
   const submitFunds = async () => {
-    const fundraisercontract = contract
-    const ethRate = exchangeRate
-    const ethTotal = donationAmount / ethRate
-    const donation = web3.utils.toWei(ethTotal.toString())
+    const ethTotal = donationAmount / exchangeRate;
+    const donation = web3.utils.toWei(ethTotal.toString());
 
     await contract.methods.donate().send({
       from: accounts[0],
       value: donation,
       gas: 650000
-    })
-    setOpen(false);
-  }
-
-  const renderDonationsList = () => {
-    var donations = userDonations
-    if (donations === null) {return null}
-
-    const totalDonations = donations.values.length
-    let donationList = []
-    var i
-    for (i = 0; i < totalDonations; i++) {
-      const ethAmount = web3.utils.fromWei(donations.values[i])
-      const userDonation = exchangeRate * ethAmount
-      const donationDate = donations.dates[i]
-      donationList.push({ donationAmount: userDonation.toFixed(2), date: donationDate})
-    }
-
-    return donationList.map((donation) => {
-      return (
-        <div className="donation-list">
-          <p>${donation.donationAmount}</p>
-
-          <Button variant="contained" color="primary">
-            <Link className="donation-receipt-link" to={{ pathname: '/receipts', state: { fund: fundName, donation: donation.donationAmount, date: donation.date} }}>
-              Request Receipt
-            </Link>
-          </Button>
-        </div>
-      )
-    })
-  }
-
-  const withdrawalFunds = async () => {
-    await contract.methods.withdraw().send({
-      from: accounts[0],
-    })
-
-    alert('Funds Withdrawn!')
-  }
-
-  const setBeneficiary = async () => {
-    await contract.methods.setBeneficiary(beneficiary).send({
-      from: accounts[0],
-    })
-
-    alert(`Fundraiser Beneficiary Changed`)
+    });
+    sendOpen(false);
   }
 
   return (
-    <div className="fundraiser-card-container">
-    <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
-    <DialogTitle id="form-dialog-title">
-      Donate to {fundName}
-    </DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          <img src={imageURL} width='200px' height='200px' />
-          <p>{description}</p>
-
-          <div className="donation-input-container">
-            <FormControl className={classes.formControl}>
-              $
-              <Input
-                id="component-simple"
-                value={donationAmount}
-                onChange={(e) => setDonationAmount(e.target.value)}
-                placeholder="0.00"
-               />
-            </FormControl>
-
-            <p>Eth: {ethAmount}</p>
-          </div>
-
-          <Button onClick={submitFunds} variant="contained" color="primary">
-            Donate
-          </Button>
-
-          <div>
-            <h3>My donations</h3>
-            {renderDonationsList()}
-          </div>
-
-
-          {isOwner &&
-            <div>
-              <FormControl className={classes.formControl}>
-                Beneficiary:
-                <Input
-                  value={beneficiary}
-                  onChange={(e) => setNewBeneficiary(e.target.value)}
-                  placeholder="Set Beneficiary"
-                 />
-              </FormControl>
-
-              <Button variant="contained" style={{ marginTop: 20 }} color="primary" onClick={setBeneficiary}>
-                Set Beneficiary
-              </Button>
-            </div>
-          }
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} color="primary">
-          Cancel
-        </Button>
-        {isOwner &&
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={withdrawalFunds}
-          >
-            Withdrawal
-          </Button>
-        }
-      </DialogActions>
-    </Dialog>
-
-    <Card className={classes.card} onClick={handleOpen}>
-      <CardActionArea>
-        <CardMedia
-          className={classes.media}
-          image={imageURL}
-          title="Fundraiser Image"
-        />
-        <CardContent>
-          <Typography gutterBottom variant="h5" component="h2">
-            {fundName}
-          </Typography>
-          <Typography variant="body2" color="textSecondary" component="p">
+    <div className="fundraiser-card-content">
+      <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
+        <DialogTitle id="form-dialog-title">Donate to {fundName}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <img src={imageURL} width='200px' height='130px' />
             <p>{description}</p>
-            <p>Total Donations: ${totalDonations}</p>
-          </Typography>
-        </CardContent>
-      </CardActionArea>
-      <CardActions>
-        <Button
-          onClick={handleOpen}
-          variant="contained"
-          className={classes.button}>
-          View More
+          </DialogContentText>
+        </DialogContent>
+        <FormControl className={classes.formControl}>
+          $
+          <Input id="component-simple"
+                 value={donationAmount}
+                 onChange={(e) => setDonationAmount(e.target.value)}
+                 placeholder="0.00" />
+        </FormControl>
+        <p>Eth: {ethAmount}</p>
+
+        <Button onClick={submitFunds} variant="contained" color="primary">
+          Donate
         </Button>
-      </CardActions>
-    </Card>
+        <DialogActions>
+          <Button onClick={handleClose} color="primary">
+            Cancel
+          </Button>
+        </DialogActions>Ï
+      </Dialog>
+      <Card className={classes.card} onClick={handleOpen}>
+        <CardActionArea>
+          <CardMedia className={classes.media}
+                     image={imageURL}
+                     title="Fundraiser Image" />
+          <CardContent>
+            <Typography gutterBottom variant="h5" component="h2">
+              {fundName}
+            </Typography>
+            <Typography variant="body2" color="textSecondary" component="p">
+              <p>{description}</p>
+              <p>Total Donations: ${totalDonations}</p>
+            </Typography>
+          </CardContent>
+        </CardActionArea>
+        <CardActions>
+          <Button onClick={handleOpen}
+                  variant="contained"
+                  className={classes.button}>
+            View More
+          </Button>
+        </CardActions>
+      </Card>
     </div>
-  )
+  );
 }
 
 export default FundraiserCard;
