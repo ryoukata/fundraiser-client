@@ -80,6 +80,7 @@ const FundraiserCard = (props) => {
   const [exchangeRate, setExchangeRate] = useState(null);
   const [userDonations, setUserDonations] = useState(null);
   const [isOwner, setIsOwner] = useState(null);
+  const [beneficiary, setNewBeneficiary] = useState(null);
   const ethAmount = donationAmount / exchangeRate || 0;
 
   const {fundraiser} = props;
@@ -135,6 +136,10 @@ const FundraiserCard = (props) => {
       console.error(error);
     }
   }
+
+  window.ethereum.on('accountsChanged', function(accounts) {
+    window.location.reload();
+  }) 
 
   const handleOpen = () => {
     // open dialog setting true for React State.
@@ -199,6 +204,14 @@ const FundraiserCard = (props) => {
     setOpen(false);
   }
 
+  const setBeneficiary = async () => {
+    await contract.methods.setBeneficiary(beneficiary).send({
+      from: accounts[0],
+    });
+    alert('Fundraiser Beneficiary Changed');
+    setOpen(false);
+  }
+
   return (
     <div className="fundraiser-card-content">
       <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
@@ -225,6 +238,22 @@ const FundraiserCard = (props) => {
           <h3>My donations</h3>
           {renderDonationsList()}
         </div>
+        {isOwner &&
+          <div>
+            <FormControl className={classes.formControl}>
+              Beneficiary:
+              <Input value={beneficiary}
+                     onChange={(e) => setNewBeneficiary(e.target.value)}
+                     placeholder="Set Beneficiary" />
+            </FormControl>
+            <Button variant="contained"
+                    style={{marginTop: 20}}
+                    color="primary"
+                    onClick={setBeneficiary}>
+              Set Beneficiary
+            </Button>
+          </div>
+        }
         <DialogActions>
           <Button onClick={handleClose} color="primary">
             Cancel
