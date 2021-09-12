@@ -79,6 +79,7 @@ const FundraiserCard = (props) => {
   const [donationAmount, setDonationAmount] = useState(null);
   const [exchangeRate, setExchangeRate] = useState(null);
   const [userDonations, setUserDonations] = useState(null);
+  const [isOwner, setIsOwner] = useState(null);
   const ethAmount = donationAmount / exchangeRate || 0;
 
   const {fundraiser} = props;
@@ -124,6 +125,9 @@ const FundraiserCard = (props) => {
       const userDonations = await instance.methods.myDonations().call({from: accounts[0]});
       console.log(userDonations);
       setUserDonations(userDonations);
+      const isUser = accounts[0];
+      const isOwner = await instance.methods.owner().call();
+      if (isOwner === accounts[[0]]) setIsOwner(true);
     } catch(error) {
       alert(
         `Failed to load web3, accounts, or contract. Check console for details.`,
@@ -187,6 +191,14 @@ const FundraiserCard = (props) => {
     })
   }
 
+  const withdrawalFunds = async () => {
+    await contract.methods.withdraw().send({
+      from: accounts[0],
+    })
+    alert('Funds Withdrawn!');
+    setOpen(false);
+  }
+
   return (
     <div className="fundraiser-card-content">
       <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
@@ -217,6 +229,11 @@ const FundraiserCard = (props) => {
           <Button onClick={handleClose} color="primary">
             Cancel
           </Button>
+          {isOwner &&
+            <Button variant="contained" color="primary" onClick={withdrawalFunds}>
+              Withdrawal
+            </Button>
+          }
         </DialogActions>Ï
       </Dialog>
       <Card className={classes.card} onClick={handleOpen}>
